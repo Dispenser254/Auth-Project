@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "Auth-api/index.js",
+      "src": "Auth-API/index.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "Auth-api/index.js"
+      "dest": "Auth-API/index.js"
     }
   ]
 }
