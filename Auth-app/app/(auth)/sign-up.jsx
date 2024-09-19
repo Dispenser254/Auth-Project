@@ -4,10 +4,12 @@ import {
   TextInput,
   KeyboardAvoidingView,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import React, { useState } from "react";
 import CustomButton from "../../components/CustomButton";
 import { router } from "expo-router";
+import { registerUser } from "../(services)/api/api";
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ const SignUp = () => {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (name, value) => {
     setFormData((prevData) => ({
@@ -25,23 +28,43 @@ const SignUp = () => {
   };
 
   const validateInfo = () => {
-    const errors = {};
+    const newErrors = {};
 
-    if (!formData.password.trim()) errors.password = "Password is required.";
-    if (!formData.confirmPassword.trim())
-      errors.confirmPassword = "Confirm Password is required.";
-    if (!formData.email.trim()) errors.email = "Email Address is required.";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email Address is required.";
+    }
 
-    setErrors(errors);
-    return !hasErrors(); // Return true if no errors
-  };
+    if (!formData.password.trim()) {
+      newErrors.password = "Password is required.";
+    }
 
-  const hasErrors = () => {
-    return Object.keys(errors).length > 0; // Return true if there are errors
+    if (!formData.confirmPassword.trim()) {
+      newErrors.confirmPassword = "Confirm Password is required.";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // Return true if no errors
   };
 
   const onSignUp = async () => {
-    validateInfo();
+    if (validateInfo()) {
+      setLoading(true);
+      try {
+        const response = await registerUser({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        console.log("Registration successful:", response);
+        router.push("/sign-in"); // Redirect to sign in on success
+      } catch (error) {
+        console.error("Registration failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const inputStyle = (error) =>
@@ -82,6 +105,7 @@ const SignUp = () => {
                 value={formData.password}
                 onChangeText={(text) => handleInputChange("password", text)}
                 placeholder="Enter your Password"
+                secureTextEntry
               />
               {errors.password && (
                 <Text className="text-red-500 p-1 font-Jakarta text-xs">
@@ -91,7 +115,7 @@ const SignUp = () => {
             </View>
             <View className="mb-4">
               <Text className="text-lg font-JakartaSemiBold mb-2">
-                Password<Text className="text-red-500">*</Text>
+                Confirm Password<Text className="text-red-500">*</Text>
               </Text>
               <TextInput
                 className={inputStyle(errors.confirmPassword)}
@@ -100,6 +124,7 @@ const SignUp = () => {
                   handleInputChange("confirmPassword", text)
                 }
                 placeholder="Enter your Confirm Password"
+                secureTextEntry
               />
               {errors.confirmPassword && (
                 <Text className="text-red-500 p-1 font-Jakarta text-xs">
@@ -121,7 +146,7 @@ const SignUp = () => {
           </View>
 
           <CustomButton
-            title="Sign Up"
+            title={loading ? <ActivityIndicator color="#fff" /> : "Sign Up"}
             handlePress={onSignUp}
             containerStyles={`m-5 p-5 rounded-xl items-center bg-blue-500`}
             textStyles="font-JakartaBold text-lg uppercase text-white"

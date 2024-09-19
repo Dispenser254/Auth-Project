@@ -4,10 +4,14 @@ import {
   TextInput,
   KeyboardAvoidingView,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import CustomButton from "../../components/CustomButton";
 import { router } from "expo-router";
+import { loginUser } from "../(services)/api/api";
+import { loginAction } from "../../redux/authSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 const SignIn = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +19,16 @@ const SignIn = () => {
     password: "",
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+
+  useEffect(() => {
+    if (user) {
+      router.push("/(tabs)");
+    }
+  }, [user]);
+  console.log(user);
 
   const handleInputChange = (name, value) => {
     setFormData((prevData) => ({
@@ -24,25 +38,41 @@ const SignIn = () => {
   };
 
   const validateInfo = () => {
-    const errors = {};
+    const newErrors = {};
 
-    if (!formData.password.trim()) errors.password = "Password is required.";
-    if (!formData.email.trim()) errors.email = "Email Address is required.";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email Address is required.";
+    }
 
-    setErrors(errors);
-    return !hasErrors(); // Return true if no errors
-  };
+    if (!formData.password.trim()) {
+      newErrors.password = "Password is required.";
+    }
 
-  const hasErrors = () => {
-    return Object.keys(errors).length > 0; // Return true if there are errors
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // Return true if there are no errors
   };
 
   const onSignIn = async () => {
-    try {
-      validateInfo();
-      router.push("/(tabs)/home");
-    } catch (error) {
-      console.log(error);
+    if (validateInfo()) {
+      setLoading(true);
+      try {
+        const response = await loginUser({
+          email: formData.email,
+          password: formData.password,
+        });
+        dispatch(loginAction(response));
+        console.log("Login successful:", response);
+        router.push("/(tabs)/home"); // Redirect to home on success
+      } catch (error) {
+        console.error("Login failed:", error.response?.data || error.message);
+        setErrors((prevErrors) => ({
+          ...prevErrors,
+          api:
+            error.response?.data?.message || "Login failed. Please try again.",
+        }));
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -105,7 +135,7 @@ const SignIn = () => {
           </View>
 
           <CustomButton
-            title="Login"
+            title={loading ? <ActivityIndicator color="#fff" /> : "Login"}
             handlePress={onSignIn}
             containerStyles={`m-5 p-5 rounded-xl items-center bg-blue-500`}
             textStyles="font-JakartaBold text-lg uppercase text-white"
